@@ -10,7 +10,7 @@ services:
   - type: web
     name: tianheng-api
     runtime: python
-    repo: https://github.com/your-username/your-repo
+    repo: https://github.com/shiyingzhang1990-del/tianheng-system
     plan: free
     region: singapore
     buildCommand: pip install -r requirements.txt
