@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "https://tianheng-api.onrender.com/api/$1" },
+    { "source": "/((?!assets/|config\\.js|favicon\\.ico).*)", "destination": "/index.html" }
+  ]
+}

@@ -1,0 +1,13 @@
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+.git/
+.gitignore
+README.md
+dist_backup/
+vector_db/
+uploads/
+instance/app.db
+*.swp
+*.swo

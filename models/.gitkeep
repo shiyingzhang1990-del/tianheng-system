@@ -1,0 +1,3 @@
+# 此目录用于存放下载的模型文件
+# 运行 python download_model.py 将模型保存到此处
+

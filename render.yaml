@@ -1,0 +1,30 @@
+# 天衡系统 - Render 部署配置
+# 部署步骤:
+# 1. 将本项目推送到 GitHub
+# 2. 在 Render.com 创建账号
+# 3. Dashboard 点击 "New +" > "Blueprint"
+# 4. 选择本仓库，Render 自动读取此文件
+# 5. 部署完成后，将生成的 URL (如 https://tianheng-api.onrender.com) 填入 dist/config.js
+
+services:
+  - type: web
+    name: tianheng-api
+    runtime: python
+    repo: https://github.com/your-username/your-repo
+    plan: free
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --bind 0.0.0.0:10000 --workers 2 --timeout 300 --keep-alive 75 app:create_app()
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: DEFAULT_USERNAME
+        value: admin
+      - key: DEFAULT_PASSWORD
+        value: admin123
+      - key: DEEPSEEK_API_KEY
+        sync: false

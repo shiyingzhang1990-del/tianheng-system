@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="天衡系统 - 智能知识问答助手">
+  <title>天衡系统 - 智能知识助手</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>">
+  <link rel="stylesheet" href="/assets/app.css">
+  <style>
+    /* Inter font fallback - system fonts */
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- Loading state -->
+    <div class="loading-screen" v-if="loading">
+      <div class="loading-spinner"></div>
+      <p class="loading-text">天衡系统加载中...</p>
+    </div>
+    
+    <!-- Login Page -->
+    <div class="login-page" v-if="!loading && !loggedIn">
+      <div class="login-bg"></div>
+      <div class="login-container">
+        <div class="login-card">
+          <div class="login-header">
+            <div class="login-logo">
+              <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                <rect width="48" height="48" rx="12" fill="#4F46E5"/>
+                <path d="M24 10C16.268 10 10 16.268 10 24s6.268 14 14 14 14-6.268 14-14S31.732 10 24 10z" fill="rgba(255,255,255,0.2)"/>
+                <path d="M24 14c-5.523 0-10 4.477-10 10s4.477 10 10 10 10-4.477 10-10-4.477-10-10-10zm0 4a2 2 0 110 4 2 2 0 010-4zm-4 6c0-2.21 1.79-4 4-4s4 1.79 4 4-1.79 4-4 4-4-1.79-4-4z" fill="white"/>
+              </svg>
+            </div>
+            <h1 class="login-title">天衡系统</h1>
+            <p class="login-subtitle">智能知识问答助手</p>
+          </div>
+          <div class="login-form">
+            <div class="form-group">
+              <label>用户名</label>
+              <input type="text" v-model="loginForm.username" placeholder="请输入用户名" @keyup.enter="doLogin">
+            </div>
+            <div class="form-group">
+              <label>密码</label>
+              <input type="password" v-model="loginForm.password" placeholder="请输入密码" @keyup.enter="doLogin">
+            </div>
+            <p class="login-error" v-if="loginError">{{ loginError }}</p>
+            <button class="login-btn" @click="doLogin" :disabled="logging">
+              {{ logging ? '登录中...' : '登 录' }}
+            </button>
+            <p class="login-hint">默认账号：admin / admin123</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Main App -->
+    <div class="main-app" v-if="!loading && loggedIn">
+      <!-- Sidebar -->
+      <div class="sidebar" :class="{ 'sidebar-open': sidebarOpen }">
+        <div class="sidebar-header">
+          <div class="sidebar-logo">
+            <svg width="32" height="32" viewBox="0 0 48 48" fill="none">
+              <rect width="48" height="48" rx="12" fill="#4F46E5"/>
+              <path d="M24 10C16.268 10 10 16.268 10 24s6.268 14 14 14 14-6.268 14-14S31.732 10 24 10z" fill="rgba(255,255,255,0.2)"/>
+              <path d="M24 14c-5.523 0-10 4.477-10 10s4.477 10 10 10 10-4.477 10-10-4.477-10-10-10zm0 4a2 2 0 110 4 2 2 0 010-4z" fill="white"/>
+            </svg>
+            <span class="sidebar-title">天衡系统</span>
+          </div>
+        </div>
+        
+        <!-- New Chat Button -->
+        <button class="new-chat-btn" @click="newChat">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          新建对话
+        </button>
+        
+        <!-- Chat History -->
+        <div class="sidebar-section-label">对话历史</div>
+        <div class="chat-history-list" v-if="chatSessions.length > 0">
+          <div v-for="s in chatSessions" :key="s.id" 
+               class="chat-history-item"
+               :class="{ active: currentSessionId === s.id }"
+               @click="switchChat(s)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            <span class="chat-history-title">{{ s.title || '新对话' }}</span>
+          </div>
+        </div>
+        <div class="empty-history" v-else>
+          <p>暂无对话历史</p>
+        </div>
+        
+        <!-- Nav Menu -->
+        <div class="sidebar-nav">
+          <div class="nav-item" :class="{ active: currentView === 'chat' }" @click="currentView = 'chat'">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            <span>AI对话</span>
+          </div>
+          <div class="nav-item" :class="{ active: currentView === 'documents' }" @click="currentView = 'documents'">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            <span>文档管理</span>
+          </div>
+          <div class="nav-item" :class="{ active: currentView === 'history' }" @click="currentView = 'history'">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span>历史记录</span>
+          </div>
+        </div>
+        
+        <!-- User section -->
+        <div class="sidebar-user">
+          <div class="user-info">
+            <div class="user-avatar">{{ (user?.username || 'U')[0].toUpperCase() }}</div>
+            <span>{{ user?.username || '用户' }}</span>
+          </div>
+          <button class="logout-btn" @click="doLogout" title="退出登录">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Sidebar overlay for mobile -->
+      <div class="sidebar-overlay" v-if="sidebarOpen" @click="sidebarOpen = false"></div>
+      
+      <!-- Main Content -->
+      <div class="main-content">
+        <!-- Top bar -->
+        <div class="top-bar">
+          <button class="menu-btn" @click="sidebarOpen = !sidebarOpen">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <h2 class="page-title" v-if="currentView === 'chat'">AI对话</h2>
+          <h2 class="page-title" v-else-if="currentView === 'documents'">文档管理</h2>
+          <h2 class="page-title" v-else>历史记录</h2>
+          <div class="top-bar-spacer"></div>
+        </div>
+        
+        <!-- Chat View -->
+        <div class="chat-view" v-if="currentView === 'chat'">
+          <div class="messages-container" ref="messagesContainer">
+            <!-- Welcome screen -->
+            <div class="welcome-screen" v-if="messages.length === 0">
+              <div class="welcome-icon">
+                <svg width="64" height="64" viewBox="0 0 48 48" fill="none">
+                  <rect width="48" height="48" rx="12" fill="#EEF2FF"/>
+                  <path d="M24 14c-5.523 0-10 4.477-10 10s4.477 10 10 10 10-4.477 10-10-4.477-10-10-10z" fill="#4F46E5" opacity="0.15"/>
+                  <path d="M24 10C16.268 10 10 16.268 10 24s6.268 14 14 14 14-6.268 14-14S31.732 10 24 10zm-2 8a2 2 0 114 0 2 2 0 01-4 0zm6 8c0 2.21-1.79 4-4 4s-4-1.79-4-4 1.79-4 4-4 4 1.79 4 4z" fill="#4F46E5"/>
+                </svg>
+              </div>
+              <h2>您好，我是天衡智能助手</h2>
+              <p>可以上传PDF文档，我来帮您分析内容、回答问题</p>
+              <div class="welcome-actions">
+                <div class="action-card" @click="currentView = 'documents'">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <span>上传文档</span>
+                </div>
+                <div class="action-card" @click="askSample('请介绍一下天衡系统的功能')">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  <span>尝试提问</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Messages -->
+            <div v-for="(msg, i) in messages" :key="i" class="message" :class="msg.role">
+              <div class="message-avatar">{{ msg.role === 'user' ? 'U' : '天' }}</div>
+              <div class="message-content">
+                <div class="message-name">{{ msg.role === 'user' ? (user?.username || '用户') : '天衡助手' }}</div>
+                <div class="message-text" v-html="renderMarkdown(msg.content)"></div>
+                <div class="message-time">{{ msg.time }}</div>
+              </div>
+            </div>
+            
+            <!-- Thinking indicator -->
+            <div class="message assistant" v-if="thinking">
+              <div class="message-avatar">天</div>
+              <div class="message-content">
+                <div class="message-name">天衡助手</div>
+                <div class="thinking-dots">
+                  <span></span><span></span><span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Input area -->
+          <div class="input-container">
+            <div class="input-wrapper">
+              <textarea v-model="question" 
+                        placeholder="输入您的问题..." 
+                        rows="1"
+                        @keydown.enter.exact="sendMessage"
+                        @input="autoResize"
+                        :disabled="thinking"></textarea>
+              <button class="send-btn" @click="sendMessage" :disabled="!question.trim() || thinking">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+              </button>
+            </div>
+            <p class="input-hint">天衡助手基于DeepSeek大模型，回答可能不准确，请核查重要信息</p>
+          </div>
+        </div>
+        
+        <!-- Documents View -->
+        <div class="documents-view" v-if="currentView === 'documents'">
+          <div class="documents-header">
+            <div class="upload-zone" :class="{ 'dragover': dragOver }"
+                 @dragover.prevent="dragOver = true" 
+                 @dragleave="dragOver = false"
+                 @drop.prevent="handleDrop">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <p>拖拽PDF文件到此处，或 <strong>点击选择文件</strong></p>
+              <p class="upload-hint">仅支持PDF格式</p>
+              <input type="file" accept=".pdf" multiple @change="uploadFiles" style="display:none" ref="fileInput">
+            </div>
+            <button class="upload-btn" @click="$refs.fileInput.click()" :disabled="uploading">
+              {{ uploading ? '上传中...' : '选择PDF文件' }}
+            </button>
+          </div>
+          
+          <div class="documents-list" v-if="documents.length > 0">
+            <div class="doc-card" v-for="doc in documents" :key="doc.id">
+              <div class="doc-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </div>
+              <div class="doc-info">
+                <div class="doc-title">{{ doc.title }}</div>
+                <div class="doc-meta">{{ doc.page_count }}页 · {{ formatFileSize(doc.file_size) }} · {{ doc.upload_time }}</div>
+              </div>
+              <div class="doc-tags">
+                <span class="tag" v-for="t in (doc.tags || [])" :key="t">{{ t }}</span>
+              </div>
+              <div class="doc-actions">
+                <span class="doc-status" :class="{ indexed: doc.vector_indexed }">
+                  {{ doc.vector_indexed ? '已索引' : '索引中...' }}
+                </span>
+                <button class="icon-btn delete" @click="deleteDocument(doc.id)" title="删除文档">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="empty-docs" v-else>
+            <p>还没有上传文档，请上传PDF文件开始使用</p>
+          </div>
+        </div>
+        
+        <!-- History View -->
+        <div class="history-view" v-if="currentView === 'history'">
+          <div class="history-list" v-if="qaHistory.length > 0">
+            <div class="history-item" v-for="r in qaHistory" :key="r.id">
+              <div class="history-question">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span>{{ r.question }}</span>
+              </div>
+              <div class="history-meta">{{ r.created_time }} · {{ r.response_time }}秒</div>
+            </div>
+          </div>
+          <div class="empty-history" v-else>
+            <p>暂无问答历史记录</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="/config.js"></script>
+  <script src="/assets/vue.global.prod.js"></script>
+  <script src="/assets/app.js"></script>
+</body>
+</html>

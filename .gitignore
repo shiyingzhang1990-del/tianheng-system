@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# 数据库
+*.db
+*.sqlite3
+instance/
+
+# 上传文件
+uploads/*
+!uploads/.gitkeep
+
+# 向量数据库
+vector_db/
+
+# 模型文件
+models/embedding/
+models/embedding.backup/
+
+# 日志
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 环境变量
+.env
+
+# 打包输出
+build/
+*.spec
+*.dmg
+*.exe
+
+# macOS App
+天衡系统.app/
