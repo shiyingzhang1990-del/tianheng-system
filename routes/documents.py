@@ -92,6 +92,7 @@ def upload_document():
             file_hash=file_hash,
             page_count=result['metadata']['page_count'],
             word_count=result['word_count'],
+            full_text=result['text'],
             tags=','.join(tags) if tags else ''
         )
         

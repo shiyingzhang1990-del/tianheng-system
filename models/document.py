@@ -25,6 +25,9 @@ class Document(db.Model):
     # 内容统计
     page_count = db.Column(db.Integer)
     word_count = db.Column(db.Integer)
+
+    # 文档全文（用于关键词检索）
+    full_text = db.Column(db.Text)
     
     # 标签
     tags = db.Column(db.String(500))  # 逗号分隔的标签列表

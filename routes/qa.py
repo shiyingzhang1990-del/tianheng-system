@@ -1,6 +1,6 @@
 """
 问答API路由
-处理智能问答相关的请求
+处理智能问答相关的请求 — 基于文档检索 + EPIC认知框架
 """
 from flask import Blueprint, request, jsonify, current_app, Response, stream_with_context
 from datetime import datetime
@@ -9,10 +9,178 @@ import requests
 
 from models import db
 from models.qa_record import QARecord
+from models.document import Document
 
 qa_bp = Blueprint('qa', __name__)
 
 DEFAULT_USER_ID = 1
+
+# EPIC 认知框架 Prompt 模板
+EPIC_PROMPT_TEMPLATE = """你是一位顶尖的经济管理领域思想家，具备深刻的洞察力和原创性思维。
+
+{context_section}
+
+# 用户问题
+{question}
+
+# E-P-I-C 生成式认知逻辑链条
+
+请运用 **E-P-I-C 认知框架** 来深度分析和回答问题，展现你的思想深度：
+
+## 第一环 (E): 本质洞察 - 寻找张力
+
+**核心任务**：从参考资料中挖掘出"根本性张力"（Fundamental Tension）
+
+**思考路径**：
+1. **悖论扫描**：识别资料中的矛盾、冲突或不一致性（理论vs现实、宏观vs微观、过去vs现在）
+2. **异常信号放大**：关注"意外发现"和"局外点"，将其作为颠覆性洞察的突破口
+3. **问题升维**：将具体问题升维至"制度-结构-人性"的深层追问
+
+**输出目标**：提炼出一个极具张力的核心问题，抓住智识要害
+
+## 第二环 (P): 模式提炼 - 锻造概念
+
+**核心任务**：为发现的张力创造"原创性概念模型"
+
+**思考路径**：
+1. **过程抽象**：将案例演化抽象为普适性的"阶段"和"核心机制"
+2. **概念命名**：为独特模式赋予简洁、形象、富有理论意涵的新名字
+3. **模型建构**：构建可视化、结构化的理论框架（如矩阵、流程图、整合框架）
+
+**输出目标**：创造一个原创的理论模型和核心构念
+
+## 第三环 (I): 意涵衍生 - 情景推演
+
+**核心任务**：基于新模型进行前瞻性的"多维情景推演"
+
+**思考路径**：
+1. **理论推演**：用新模型审视其他领域，得出颠覆性理论假设
+2. **实践推演**：为不同实践者（CEO、政策制定者、投资者）提供差异化的"行动剧本"
+3. **边界推演**：明确模型的适用条件和失效边界，预见未来挑战
+
+**输出目标**：提供具有前瞻性和可操作性的战略洞察
+
+## 第四环 (C): 语境重构 - 定义贡献
+
+**核心任务**：阐述这个分析如何"重塑认知语境"
+
+**思考路径**：
+1. **贡献定位**：在宏大的知识地图中定位这个洞察的位置
+2. **议程设置**：提出能引领未来思考方向的"新问题"和"新议程"
+3. **价值升华**：回归时代命题，彰显思想格局和社会价值
+
+**输出目标**：重新定义问题的认知框架，开启新探索
+
+---
+
+## 回答要求
+
+1. **深度优先**：追求洞察的深刻性，而非表面的全面性
+2. **创造性**：不满足于应用现有理论，要创造新的理论框架
+3. **结构化**：使用Markdown格式（标题、列表、粗体、代码块、表格等）清晰呈现思维层次
+4. **前瞻性**：不仅解释过去，更要塑造对未来的理解
+5. **基于事实**：所有洞察必须源自参考资料，不编造信息
+6. **承认局限**：如果资料不足以支撑深度分析，明确说明
+
+请开始你的E-P-I-C认知分析："""
+
+
+def search_documents(question: str, top_n: int = 5):
+    """在已上传的文档中做关键词检索
+
+    将问题拆成关键词，在文档标题、标签和全文中搜索匹配。
+    返回最相关的文档及其匹配片段。
+    """
+    all_docs = Document.query.filter_by(
+        user_id=DEFAULT_USER_ID, status='active'
+    ).all()
+
+    if not all_docs:
+        return []
+
+    keywords = [w.strip() for w in question.replace('？', ' ').replace('?', ' ')
+                .replace('，', ' ').replace(',', ' ').replace('。', ' ')
+                .replace('！', ' ').split() if len(w.strip()) >= 2]
+
+    scored = []
+    for doc in all_docs:
+        score = 0
+        snippets = []
+
+        searchable = f"{doc.title} {doc.tags or ''} {doc.full_text or ''}"
+
+        for kw in keywords:
+            count = searchable.lower().count(kw.lower())
+            if count > 0:
+                score += count
+
+        if score == 0:
+            continue
+
+        if doc.full_text:
+            text = doc.full_text
+            best_pos = 0
+            best_hits = 0
+            step = max(1, len(text) // 10)
+            for start in range(0, len(text) - 200, step):
+                hits = sum(text[start:start + 500].lower().count(kw.lower()) for kw in keywords)
+                if hits > best_hits:
+                    best_hits = hits
+                    best_pos = start
+
+            snippet_start = max(0, best_pos - 100)
+            snippet = text[snippet_start:snippet_start + 800]
+            if snippet_start > 0:
+                snippet = '...' + snippet
+            if snippet_start + 800 < len(text):
+                snippet = snippet + '...'
+            snippets.append(snippet)
+
+        scored.append({
+            'id': doc.id,
+            'title': doc.title,
+            'author': doc.author or '',
+            'score': score,
+            'snippets': snippets[:3]
+        })
+
+    scored.sort(key=lambda x: x['score'], reverse=True)
+    return scored[:top_n]
+
+
+def build_context(search_results):
+    """构建给AI的参考资料上下文"""
+    if not search_results:
+        return None
+
+    parts = []
+    for i, r in enumerate(search_results):
+        parts.append(f"### 参考资料{i + 1}：《{r['title']}》")
+        if r['author']:
+            parts.append(f"作者：{r['author']}")
+        for j, snippet in enumerate(r['snippets'][:2]):
+            parts.append(f"\n相关片段{j + 1}：\n{snippet}\n")
+
+    return '\n'.join(parts)
+
+
+def build_epic_prompt(question: str, context: str | None) -> str:
+    """构建完整的 EPIC Prompt"""
+    if context:
+        context_section = f"""# 参考资料（来自用户已上传的文档）
+
+{context}
+
+请基于以上参考资料，运用 E-P-I-C 认知框架深度分析和回答问题。"""
+    else:
+        context_section = """# 注意
+当前知识库中暂无相关文档。请基于你自己的知识储备，运用 E-P-I-C 认知框架深度分析和回答问题。
+建议在回答开头说明：此回答基于通用知识，未参考用户上传的文档。"""
+
+    return EPIC_PROMPT_TEMPLATE.format(
+        context_section=context_section,
+        question=question
+    )
 
 
 def call_deepseek_stream(api_key, api_url, messages):
@@ -24,7 +192,9 @@ def call_deepseek_stream(api_key, api_url, messages):
     payload = {
         'model': 'deepseek-chat',
         'messages': messages,
-        'stream': True
+        'stream': True,
+        'temperature': 0.3,
+        'max_tokens': 4000
     }
 
     try:
@@ -65,7 +235,7 @@ def call_deepseek_stream(api_key, api_url, messages):
 
 @qa_bp.route('/ask-stream', methods=['POST'])
 def ask_question_stream():
-    """提问并获取答案（流式输出）- 直接使用 DeepSeek API"""
+    """提问并获取答案（流式输出）— 文档检索 + EPIC 框架"""
     try:
         data = request.get_json()
         question = data.get('question', '').strip()
@@ -79,8 +249,6 @@ def ask_question_stream():
         api_key = current_app.config.get('DEEPSEEK_API_KEY', '')
         api_url = current_app.config.get('DEEPSEEK_API_URL', 'https://api.deepseek.com')
 
-        print(f"收到问题（流式）: {question}")
-
         if not api_key:
             def no_key_generate():
                 yield f"data: {json.dumps({'type': 'error', 'data': '请先配置 DeepSeek API Key'}, ensure_ascii=False)}\n\n"
@@ -89,16 +257,25 @@ def ask_question_stream():
                 mimetype='text/event-stream'
             )
 
-        messages = [
-            {'role': 'system', 'content': '你是一个智能知识助手，请准确、简洁地回答用户的问题。'},
-            {'role': 'user', 'content': question}
-        ]
+        # 搜索相关文档
+        search_results = search_documents(question)
+        context = build_context(search_results)
+        prompt = build_epic_prompt(question, context)
+
+        print(f"收到问题（流式）: {question}")
+        print(f"匹配文档数: {len(search_results)}")
+
+        messages = [{'role': 'user', 'content': prompt}]
 
         def generate():
             start_time = datetime.now()
             full_answer = []
+            sources = [{'id': r['id'], 'title': r['title'], 'author': r['author']}
+                       for r in search_results]
 
             try:
+                yield f"data: {json.dumps({'type': 'sources', 'data': sources}, ensure_ascii=False)}\n\n"
+
                 for chunk_type, chunk_content in call_deepseek_stream(api_key, api_url, messages):
                     if chunk_type == 'content':
                         full_answer.append(chunk_content)
@@ -115,7 +292,7 @@ def ask_question_stream():
                         user_id=DEFAULT_USER_ID,
                         question=question,
                         answer=answer_text,
-                        sources='[]',
+                        sources=json.dumps(sources, ensure_ascii=False),
                         response_time=response_time
                     )
                     db.session.add(qa_record)
@@ -149,7 +326,7 @@ def ask_question_stream():
 
 @qa_bp.route('/ask', methods=['POST'])
 def ask_question():
-    """提问并获取答案（非流式）"""
+    """提问并获取答案（非流式）— 文档检索 + EPIC 框架"""
     try:
         data = request.get_json()
         question = data.get('question', '').strip()
@@ -166,7 +343,13 @@ def ask_question():
         if not api_key:
             return jsonify({'error': '请先配置 DeepSeek API Key'}), 400
 
+        # 搜索相关文档
+        search_results = search_documents(question)
+        context = build_context(search_results)
+        prompt = build_epic_prompt(question, context)
+
         print(f"收到问题: {question}")
+        print(f"匹配文档数: {len(search_results)}")
 
         headers = {
             'Content-Type': 'application/json',
@@ -174,10 +357,9 @@ def ask_question():
         }
         payload = {
             'model': 'deepseek-chat',
-            'messages': [
-                {'role': 'system', 'content': '你是一个智能知识助手，请准确、简洁地回答用户的问题。'},
-                {'role': 'user', 'content': question}
-            ]
+            'messages': [{'role': 'user', 'content': prompt}],
+            'temperature': 0.3,
+            'max_tokens': 4000
         }
 
         start_time = datetime.now()
@@ -197,11 +379,14 @@ def ask_question():
         result = resp.json()
         answer = result.get('choices', [{}])[0].get('message', {}).get('content', '')
 
+        sources = [{'id': r['id'], 'title': r['title'], 'author': r['author']}
+                   for r in search_results]
+
         qa_record = QARecord(
             user_id=DEFAULT_USER_ID,
             question=question,
             answer=answer,
-            sources='[]',
+            sources=json.dumps(sources, ensure_ascii=False),
             response_time=response_time
         )
         db.session.add(qa_record)
@@ -212,7 +397,7 @@ def ask_question():
             'qa_id': qa_record.id,
             'question': question,
             'answer': answer,
-            'sources': [],
+            'sources': sources,
             'response_time': response_time,
             'timestamp': qa_record.created_time.strftime('%Y-%m-%d %H:%M:%S')
         })
@@ -241,6 +426,7 @@ def get_history():
                 'id': record.id,
                 'question': record.question,
                 'answer': record.answer,
+                'sources': record.sources,
                 'response_time': record.response_time,
                 'created_time': record.created_time.strftime('%Y-%m-%d %H:%M:%S'),
                 'satisfaction': record.satisfaction
@@ -272,7 +458,7 @@ def get_qa_record(qa_id):
             'id': record.id,
             'question': record.question,
             'answer': record.answer,
-            'sources': [],
+            'sources': record.sources,
             'response_time': record.response_time,
             'created_time': record.created_time.strftime('%Y-%m-%d %H:%M:%S'),
             'satisfaction': record.satisfaction

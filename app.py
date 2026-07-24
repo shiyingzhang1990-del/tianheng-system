@@ -71,6 +71,13 @@ def create_app(config_class=DevelopmentConfig):
     
     with app.app_context():
         db.create_all()
+        # 迁移：为已有数据库添加 full_text 列
+        try:
+            from sqlalchemy import text
+            db.session.execute(text('ALTER TABLE documents ADD COLUMN full_text TEXT'))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
         ensure_default_user()
     
     return app
