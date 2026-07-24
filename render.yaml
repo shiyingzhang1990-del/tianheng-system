@@ -1,11 +1,3 @@
-# 天衡系统 - Render 部署配置
-# 部署步骤:
-# 1. 将本项目推送到 GitHub
-# 2. 在 Render.com 创建账号
-# 3. Dashboard 点击 "New +" > "Blueprint"
-# 4. 选择本仓库，Render 自动读取此文件
-# 5. 部署完成后，将生成的 URL (如 https://tianheng-api.onrender.com) 填入 dist/config.js
-
 services:
   - type: web
     name: tianheng-api
@@ -13,8 +5,8 @@ services:
     repo: https://github.com/shiyingzhang1990-del/tianheng-system
     plan: free
     region: singapore
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn --bind 0.0.0.0:10000 --workers 2 --timeout 300 --keep-alive 75 app:create_app()
+    buildCommand: pip install --no-cache-dir -r requirements.txt
+    startCommand: gunicorn --bind 0.0.0.0:10000 --workers 1 --timeout 300 --log-level info app:create_app
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.0
@@ -28,3 +20,7 @@ services:
         value: admin123
       - key: DEEPSEEK_API_KEY
         sync: false
+      - key: HF_HUB_DISABLE_SYMLINKS_WARNING
+        value: "1"
+      - key: SENTENCE_TRANSFORMERS_HOME
+        value: /var/data
