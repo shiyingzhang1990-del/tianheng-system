@@ -5,20 +5,35 @@
 import os
 from typing import List, Dict, Optional
 
-try:
-    import chromadb
-    from chromadb.config import Settings
-    CHROMADB_AVAILABLE = True
-except ImportError:
-    CHROMADB_AVAILABLE = False
-    print("警告: ChromaDB未安装，向量检索功能将不可用")
+CHROMADB_AVAILABLE = None
+SENTENCE_TRANSFORMERS_AVAILABLE = None
 
-try:
-    from sentence_transformers import SentenceTransformer
-    SENTENCE_TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    SENTENCE_TRANSFORMERS_AVAILABLE = False
-    print("警告: sentence-transformers未安装，文档向量化功能将不可用")
+
+def _ensure_chromadb():
+    global CHROMADB_AVAILABLE
+    if CHROMADB_AVAILABLE is None:
+        try:
+            global chromadb, Settings
+            import chromadb
+            from chromadb.config import Settings
+            CHROMADB_AVAILABLE = True
+        except ImportError:
+            CHROMADB_AVAILABLE = False
+            print("警告: ChromaDB未安装，向量检索功能将不可用")
+    return CHROMADB_AVAILABLE
+
+
+def _ensure_sentence_transformers():
+    global SENTENCE_TRANSFORMERS_AVAILABLE
+    if SENTENCE_TRANSFORMERS_AVAILABLE is None:
+        try:
+            global SentenceTransformer
+            from sentence_transformers import SentenceTransformer
+            SENTENCE_TRANSFORMERS_AVAILABLE = True
+        except ImportError:
+            SENTENCE_TRANSFORMERS_AVAILABLE = False
+            print("警告: sentence-transformers未安装，文档向量化功能将不可用")
+    return SENTENCE_TRANSFORMERS_AVAILABLE
 
 
 class VectorStore:
@@ -30,10 +45,10 @@ class VectorStore:
         Args:
             persist_directory: 向量数据库持久化目录
         """
-        if not CHROMADB_AVAILABLE:
+        if not _ensure_chromadb():
             raise ImportError("请先安装chromadb: pip install chromadb")
-        
-        if not SENTENCE_TRANSFORMERS_AVAILABLE:
+
+        if not _ensure_sentence_transformers():
             raise ImportError("请先安装sentence-transformers: pip install sentence-transformers")
         
         # 创建持久化目录
