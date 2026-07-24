@@ -101,21 +101,21 @@ def upload_document():
         print(f"文档已保存到数据库: ID={document.id}")
         
         try:
-        vector_store = get_vector_store(current_app.config.get('VECTOR_DB_FOLDER', './vector_db'))
-        vector_success = vector_store.add_document(
-            document_id=document.id,
-            chunks=result['chunks'],
-            metadata={
-                'title': document.title,
-                'author': document.author,
-                'tags': document.tags
-            }
-        )
-        
-        if vector_success:
-            document.vector_indexed = True
-            db.session.commit()
-            print("文档向量化完成")
+            vector_store = get_vector_store(current_app.config.get('VECTOR_DB_FOLDER', './vector_db'))
+            vector_success = vector_store.add_document(
+                document_id=document.id,
+                chunks=result['chunks'],
+                metadata={
+                    'title': document.title,
+                    'author': document.author,
+                    'tags': document.tags
+                }
+            )
+
+            if vector_success:
+                document.vector_indexed = True
+                db.session.commit()
+                print("文档向量化完成")
         except Exception as e:
             print(f"向量化跳过（依赖未安装）: {e}")
         
