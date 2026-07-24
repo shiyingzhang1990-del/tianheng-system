@@ -84,31 +84,34 @@ class PDFProcessor:
         try:
             text_parts = []
 
-            if PDFPLUMBER_AVAILABLE:
+            with open(file_path, 'rb') as f:
+                reader = PyPDF2.PdfReader(f)
+                for page_num, page in enumerate(reader.pages):
+                    try:
+                        page_text = page.extract_text()
+                        if page_text:
+                            text_parts.append(f"\n\n[第{page_num + 1}页]\n{page_text}")
+                    except Exception as e:
+                        print(f"提取第 {page_num + 1} 页时出错: {e}")
+
+            full_text = ''.join(text_parts)
+            word_count = len(full_text.replace(' ', '').replace('\n', ''))
+
+            if word_count < 100 and PDFPLUMBER_AVAILABLE:
                 try:
                     import pdfplumber
+                    text_parts = []
                     with pdfplumber.open(file_path) as pdf:
                         for page_num, page in enumerate(pdf.pages):
                             page_text = page.extract_text()
                             if page_text:
                                 text_parts.append(f"\n\n[第{page_num + 1}页]\n{page_text}")
+                    full_text = ''.join(text_parts)
+                    word_count = len(full_text.replace(' ', '').replace('\n', ''))
+                    print(f"pdfplumber补充提取完成，共 {word_count} 字")
                 except Exception as e:
-                    print(f"pdfplumber提取失败，回退到PyPDF2: {e}")
-                    PDFPLUMBER_AVAILABLE = False
+                    print(f"pdfplumber提取失败: {e}")
 
-            if not PDFPLUMBER_AVAILABLE or not text_parts:
-                with open(file_path, 'rb') as f:
-                    reader = PyPDF2.PdfReader(f)
-                    for page_num, page in enumerate(reader.pages):
-                        try:
-                            page_text = page.extract_text()
-                            if page_text:
-                                text_parts.append(f"\n\n[第{page_num + 1}页]\n{page_text}")
-                        except Exception as e:
-                            print(f"提取第 {page_num + 1} 页时出错: {e}")
-
-            full_text = ''.join(text_parts)
-            word_count = len(full_text.replace(' ', '').replace('\n', ''))
             return self._clean_text(full_text), word_count
         except Exception as e:
             print(f"提取PDF文本时出错: {e}")
