@@ -100,7 +100,7 @@ def upload_document():
         
         print(f"文档已保存到数据库: ID={document.id}")
         
-        # 向量化并存储
+        try:
         vector_store = get_vector_store(current_app.config.get('VECTOR_DB_FOLDER', './vector_db'))
         vector_success = vector_store.add_document(
             document_id=document.id,
@@ -116,6 +116,8 @@ def upload_document():
             document.vector_indexed = True
             db.session.commit()
             print("文档向量化完成")
+        except Exception as e:
+            print(f"向量化跳过（依赖未安装）: {e}")
         
         return jsonify({
             'success': True,
@@ -260,8 +262,11 @@ def delete_document(doc_id):
             print(f"文件已删除: {document.file_path}")
         
         # 删除向量数据
-        vector_store = get_vector_store(current_app.config.get('VECTOR_DB_FOLDER', './vector_db'))
-        vector_store.delete_document(doc_id)
+        try:
+            vector_store = get_vector_store(current_app.config.get('VECTOR_DB_FOLDER', './vector_db'))
+            vector_store.delete_document(doc_id)
+        except Exception as e:
+            print(f"向量删除跳过（依赖未安装）: {e}")
         
         # 从数据库删除
         db.session.delete(document)

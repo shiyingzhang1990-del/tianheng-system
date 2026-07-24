@@ -5,6 +5,7 @@ services:
     repo: https://github.com/shiyingzhang1990-del/tianheng-system
     plan: free
     region: singapore
+    preDeployCommand: rm -rf /opt/render/project/src/.venv/lib/python3.10/site-packages/{chromadb,sentence_transformers,torch,onnxruntime,pydantic_core} 2>/dev/null; true
     buildCommand: pip install --no-cache-dir -r requirements.txt
     startCommand: gunicorn --bind 0.0.0.0:10000 --workers 1 --timeout 300 --log-level info wsgi:app
     envVars:
@@ -20,7 +21,3 @@ services:
         value: admin123
       - key: DEEPSEEK_API_KEY
         sync: false
-      - key: HF_HUB_DISABLE_SYMLINKS_WARNING
-        value: "1"
-      - key: SENTENCE_TRANSFORMERS_HOME
-        value: /var/data
