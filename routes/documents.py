@@ -10,7 +10,6 @@ from datetime import datetime
 from models import db
 from models.document import Document
 from services.pdf_processor import get_pdf_processor
-from services.vector_store import get_vector_store
 
 # 创建蓝图
 documents_bp = Blueprint('documents', __name__)
@@ -100,26 +99,7 @@ def upload_document():
         db.session.commit()
         
         print(f"文档已保存到数据库: ID={document.id}")
-        
-        try:
-            vector_store = get_vector_store(current_app.config.get('VECTOR_DB_FOLDER', './vector_db'))
-            vector_success = vector_store.add_document(
-                document_id=document.id,
-                chunks=result['chunks'],
-                metadata={
-                    'title': document.title,
-                    'author': document.author,
-                    'tags': document.tags
-                }
-            )
 
-            if vector_success:
-                document.vector_indexed = True
-                db.session.commit()
-                print("文档向量化完成")
-        except Exception as e:
-            print(f"向量化跳过（依赖未安装）: {e}")
-        
         return jsonify({
             'success': True,
             'message': '文档上传成功',
@@ -261,13 +241,6 @@ def delete_document(doc_id):
         if os.path.exists(document.file_path):
             os.remove(document.file_path)
             print(f"文件已删除: {document.file_path}")
-        
-        # 删除向量数据
-        try:
-            vector_store = get_vector_store(current_app.config.get('VECTOR_DB_FOLDER', './vector_db'))
-            vector_store.delete_document(doc_id)
-        except Exception as e:
-            print(f"向量删除跳过（依赖未安装）: {e}")
         
         # 从数据库删除
         db.session.delete(document)
