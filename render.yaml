@@ -6,7 +6,7 @@ services:
     plan: free
     region: singapore
     buildCommand: pip install --no-cache-dir -r requirements.txt
-    startCommand: gunicorn --bind 0.0.0.0:10000 --workers 1 --timeout 300 --log-level info app:create_app
+    startCommand: gunicorn --bind 0.0.0.0:10000 --workers 1 --timeout 300 --log-level info wsgi:app
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.0
