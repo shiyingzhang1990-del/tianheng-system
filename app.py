@@ -71,10 +71,16 @@ def create_app(config_class=DevelopmentConfig):
     
     with app.app_context():
         db.create_all()
-        # 迁移：为已有数据库添加 full_text 列
+        # 迁移：为已有数据库添加 full_text 列和 file_type 列
         try:
             from sqlalchemy import text
             db.session.execute(text('ALTER TABLE documents ADD COLUMN full_text TEXT'))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        try:
+            from sqlalchemy import text
+            db.session.execute(text("ALTER TABLE documents ADD COLUMN file_type VARCHAR(10) DEFAULT 'pdf'"))
             db.session.commit()
         except Exception:
             db.session.rollback()

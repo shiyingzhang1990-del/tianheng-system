@@ -21,6 +21,7 @@ class Document(db.Model):
     file_name = db.Column(db.String(255), nullable=False)
     file_size = db.Column(db.Integer)  # 字节
     file_hash = db.Column(db.String(64), index=True)  # MD5哈希，用于重复检测
+    file_type = db.Column(db.String(10), default='pdf')  # pdf/docx/txt
     
     # 内容统计
     page_count = db.Column(db.Integer)
