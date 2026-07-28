@@ -230,8 +230,8 @@
                 <span class="tag" v-for="t in (doc.tags || [])" :key="t">{{ t }}</span>
               </div>
               <div class="doc-actions">
-                <span class="doc-status" :class="{ indexed: doc.vector_indexed }">
-                  {{ doc.vector_indexed ? '已索引' : '索引中...' }}
+                <span class="doc-status indexed">
+                  已就绪
                 </span>
                 <button class="icon-btn delete" @click="deleteDocument(doc.id)" title="删除文档">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>

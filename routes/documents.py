@@ -79,6 +79,7 @@ def upload_document():
             file_name=filename,
             file_size=os.path.getsize(file_path),
             file_hash='',
+            vector_indexed=True,
             page_count=0,
             word_count=word_count,
             file_type=file_type,

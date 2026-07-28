@@ -84,6 +84,13 @@ def create_app(config_class=DevelopmentConfig):
             db.session.commit()
         except Exception:
             db.session.rollback()
+        # 将所有已有文档标记为已就绪（不再使用向量索引）
+        try:
+            from sqlalchemy import text
+            db.session.execute(text("UPDATE documents SET vector_indexed = 1 WHERE vector_indexed = 0"))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
         ensure_default_user()
     
     return app

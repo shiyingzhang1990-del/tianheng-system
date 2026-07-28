@@ -33,8 +33,8 @@ class Document(db.Model):
     # 标签
     tags = db.Column(db.String(500))  # 逗号分隔的标签列表
     
-    # 向量化状态
-    vector_indexed = db.Column(db.Boolean, default=False)
+    # 向量化状态（Q&A已改为SQLite关键词检索，无需向量索引）
+    vector_indexed = db.Column(db.Boolean, default=True)
     
     # 时间戳
     upload_time = db.Column(db.DateTime, default=datetime.utcnow)
