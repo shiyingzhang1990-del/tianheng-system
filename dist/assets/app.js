@@ -281,38 +281,56 @@ const App = {
     }
     
     // Documents
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt'];
+
     async function uploadFiles(e) {
-      const files = e.target.files;
+      const files = Array.from(e.target.files);
       if (!files.length) return;
       uploading.value = true;
-      
-      for (const file of files) {
+
+      let done = 0, ok = 0, fail = 0;
+      const total = files.length;
+
+      await Promise.allSettled(files.map(async (file) => {
         const formData = new FormData();
         formData.append('file', file);
         try {
-          await fetch(`${API}/api/documents/upload`, { method: 'POST', body: formData });
-        } catch (e) { console.error('Upload failed:', e); }
-      }
+          const resp = await fetch(`${API}/api/documents/upload`, { method: 'POST', body: formData });
+          if (resp.ok) ok++; else fail++;
+        } catch (e) { console.error('Upload failed:', e); fail++; }
+        done++;
+        if (total > 1) uploading.value = `上传中 ${done}/${total}...`;
+      }));
+
       uploading.value = false;
       e.target.value = '';
+      if (total > 1) alert(`上传完成: 成功 ${ok} 个${fail > 0 ? ', 失败 ' + fail + ' 个' : ''}`);
       loadDocuments();
     }
-    
+
     async function handleDrop(e) {
       dragOver.value = false;
-      const files = e.dataTransfer.files;
+      const files = Array.from(e.dataTransfer.files);
       if (!files.length) return;
       uploading.value = true;
-      
-      for (const file of files) {
-        if (!file.name.toLowerCase().endsWith('.pdf')) continue;
+
+      let done = 0, ok = 0, fail = 0;
+      const validFiles = files.filter(f => allowedExtensions.some(ext => f.name.toLowerCase().endsWith(ext)));
+      const total = validFiles.length;
+
+      await Promise.allSettled(validFiles.map(async (file) => {
         const formData = new FormData();
         formData.append('file', file);
         try {
-          await fetch(`${API}/api/documents/upload`, { method: 'POST', body: formData });
-        } catch (e) { console.error('Upload failed:', e); }
-      }
+          const resp = await fetch(`${API}/api/documents/upload`, { method: 'POST', body: formData });
+          if (resp.ok) ok++; else fail++;
+        } catch (e) { console.error('Upload failed:', e); fail++; }
+        done++;
+        if (total > 1) uploading.value = `上传中 ${done}/${total}...`;
+      }));
+
       uploading.value = false;
+      if (total > 1) alert(`上传完成: 成功 ${ok} 个${fail > 0 ? ', 失败 ' + fail + ' 个' : ''}`);
       loadDocuments();
     }
     

@@ -148,7 +148,7 @@
                 </svg>
               </div>
               <h2>您好，我是天衡智能助手</h2>
-              <p>可以上传PDF文档，我来帮您分析内容、回答问题</p>
+              <p>可以上传 PDF、DOCX、TXT 文档，我来帮您分析内容、回答问题</p>
               <div class="welcome-actions">
                 <div class="action-card" @click="currentView = 'documents'">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -208,12 +208,12 @@
                  @dragleave="dragOver = false"
                  @drop.prevent="handleDrop">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <p>拖拽PDF文件到此处，或 <strong>点击选择文件</strong></p>
-              <p class="upload-hint">仅支持PDF格式</p>
-              <input type="file" accept=".pdf" multiple @change="uploadFiles" style="display:none" ref="fileInput">
+              <p>拖拽文件到此处，或 <strong>点击选择文件</strong></p>
+              <p class="upload-hint">支持 PDF、DOCX、TXT 格式</p>
+              <input type="file" accept=".pdf,.doc,.docx,.txt" multiple @change="uploadFiles" style="display:none" ref="fileInput">
             </div>
             <button class="upload-btn" @click="$refs.fileInput.click()" :disabled="uploading">
-              {{ uploading ? '上传中...' : '选择PDF文件' }}
+              {{ uploading ? '上传中...' : '选择文件' }}
             </button>
           </div>
           
@@ -240,7 +240,7 @@
             </div>
           </div>
           <div class="empty-docs" v-else>
-            <p>还没有上传文档，请上传PDF文件开始使用</p>
+            <p>还没有上传文档，请上传文件开始使用</p>
           </div>
         </div>
         
