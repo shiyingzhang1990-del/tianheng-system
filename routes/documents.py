@@ -190,8 +190,7 @@ def get_document(doc_id):
             'file_name': document.file_name,
             'tags': document.tags.split(',') if document.tags else [],
             'upload_time': document.upload_time.strftime('%Y-%m-%d %H:%M:%S'),
-            'vector_indexed': document.vector_indexed,
-            'full_text': document.full_text or ''
+            'vector_indexed': document.vector_indexed
         })
 
     except Exception as e:
@@ -201,19 +200,34 @@ def get_document(doc_id):
 
 @documents_bp.route('/<int:doc_id>/content', methods=['GET'])
 def get_document_content(doc_id):
-    """快速获取文档全文内容（用于阅读）"""
+    """获取文档内容（支持分页读取长文档）"""
     try:
         document = Document.query.get(doc_id)
 
         if not document:
             return jsonify({'error': '文档不存在'}), 404
 
+        full_text = document.full_text or ''
+        total_chars = len(full_text)
+
+        # 支持分页参数
+        offset = request.args.get('offset', 0, type=int)
+        limit = request.args.get('limit', 0, type=int)
+
+        if limit > 0 and offset >= 0:
+            chunk = full_text[offset:offset + limit]
+        else:
+            chunk = full_text
+
         return jsonify({
             'id': document.id,
             'title': document.title,
             'file_type': document.file_type or 'pdf',
             'word_count': document.word_count,
-            'content': document.full_text or '',
+            'total_chars': total_chars,
+            'offset': offset,
+            'content': chunk,
+            'has_more': (offset + limit) < total_chars if limit > 0 else False,
             'upload_time': document.upload_time.strftime('%Y-%m-%d %H:%M:%S')
         })
 

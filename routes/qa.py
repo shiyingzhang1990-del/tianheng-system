@@ -86,55 +86,63 @@ EPIC_PROMPT_TEMPLATE = """你是一位顶尖的经济管理领域思想家，具
 
 
 def search_documents(question: str, top_n: int = 5):
-    """在已上传的文档中做关键词检索
+    """在已上传的文档中做关键词检索（SQLite LIKE 数据库层匹配，快速）
 
-    将问题拆成关键词，在文档标题、标签和全文中搜索匹配。
-    返回最相关的文档及其匹配片段。
+    用 SQL LIKE 在数据库层做关键词匹配，避免加载全部文档全文到内存。
     """
-    all_docs = Document.query.filter_by(
-        user_id=DEFAULT_USER_ID, status='active'
-    ).all()
-
-    if not all_docs:
-        return []
-
     keywords = [w.strip() for w in question.replace('？', ' ').replace('?', ' ')
                 .replace('，', ' ').replace(',', ' ').replace('。', ' ')
                 .replace('！', ' ').split() if len(w.strip()) >= 2]
 
+    if not keywords:
+        return []
+
+    # 在数据库层用 LIKE 匹配，只查出相关文档（不加载 full_text）
+    conditions = []
+    for kw in keywords:
+        like = f'%{kw}%'
+        conditions.append(Document.title.ilike(like))
+        conditions.append(Document.tags.ilike(like))
+        conditions.append(Document.full_text.ilike(like))
+
+    candidates = Document.query.filter(
+        Document.user_id == DEFAULT_USER_ID,
+        Document.status == 'active',
+        db.or_(*conditions)
+    ).all()
+
+    if not candidates:
+        return []
+
+    # 只对候选文档做评分和摘要提取
     scored = []
-    for doc in all_docs:
-        score = 0
-        snippets = []
+    for doc in candidates:
+        title_and_tags = f"{doc.title} {doc.tags or ''}"
+        score = sum(title_and_tags.lower().count(kw.lower()) for kw in keywords)
 
-        searchable = f"{doc.title} {doc.tags or ''} {doc.full_text or ''}"
+        text = doc.full_text or ''
+        if text:
+            text_lower = text.lower()
+            for kw in keywords:
+                score += text_lower.count(kw.lower())
 
-        for kw in keywords:
-            count = searchable.lower().count(kw.lower())
-            if count > 0:
-                score += count
-
-        if score == 0:
-            continue
-
-        if doc.full_text:
-            text = doc.full_text
+            # 快速找最佳摘要位置（取第一个关键词出现的位置附近）
             best_pos = 0
-            best_hits = 0
-            step = max(1, len(text) // 10)
-            for start in range(0, len(text) - 200, step):
-                hits = sum(text[start:start + 500].lower().count(kw.lower()) for kw in keywords)
-                if hits > best_hits:
-                    best_hits = hits
-                    best_pos = start
+            for kw in keywords:
+                pos = text_lower.find(kw.lower())
+                if pos != -1:
+                    best_pos = pos
+                    break
 
-            snippet_start = max(0, best_pos - 100)
-            snippet = text[snippet_start:snippet_start + 800]
-            if snippet_start > 0:
+            start = max(0, best_pos - 150)
+            snippet = text[start:start + 600]
+            if start > 0:
                 snippet = '...' + snippet
-            if snippet_start + 800 < len(text):
+            if start + 600 < len(text):
                 snippet = snippet + '...'
-            snippets.append(snippet)
+            snippets = [snippet]
+        else:
+            snippets = []
 
         scored.append({
             'id': doc.id,
