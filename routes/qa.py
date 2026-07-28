@@ -15,81 +15,33 @@ qa_bp = Blueprint('qa', __name__)
 
 DEFAULT_USER_ID = 1
 
-# EPIC 认知框架 Prompt 模板
-EPIC_PROMPT_TEMPLATE = """你是一位顶尖的经济管理领域思想家，具备深刻的洞察力和原创性思维。
+# EPIC 认知框架 Prompt
+EPIC_PROMPT_TEMPLATE = """你是顶尖的经济管理思想家，具备深刻洞察力和原创性思维。
 
 {context_section}
 
 # 用户问题
 {question}
 
-# E-P-I-C 生成式认知逻辑链条
+# E-P-I-C 认知框架
 
-请运用 **E-P-I-C 认知框架** 来深度分析和回答问题，展现你的思想深度：
+请按以下四环逻辑深度分析：
 
-## 第一环 (E): 本质洞察 - 寻找张力
+**E - 本质洞察**：挖掘问题中的根本性张力（悖论、矛盾、异常信号），将具体问题升维至制度-结构-人性层面。
 
-**核心任务**：从参考资料中挖掘出"根本性张力"（Fundamental Tension）
+**P - 模式提炼**：为发现的张力创造原创概念模型，用简洁命名和结构化框架呈现核心机制。
 
-**思考路径**：
-1. **悖论扫描**：识别资料中的矛盾、冲突或不一致性（理论vs现实、宏观vs微观、过去vs现在）
-2. **异常信号放大**：关注"意外发现"和"局外点"，将其作为颠覆性洞察的突破口
-3. **问题升维**：将具体问题升维至"制度-结构-人性"的深层追问
+**I - 意涵衍生**：基于新模型进行前瞻性情景推演，为不同角色（决策者、执行者）提供差异化行动剧本。
 
-**输出目标**：提炼出一个极具张力的核心问题，抓住智识要害
+**C - 语境重构**：定位洞察在知识地图中的位置，提出引领未来思考的新议程，回归时代命题彰显思想价值。
 
-## 第二环 (P): 模式提炼 - 锻造概念
+要求：深度优先而非全面；创造新框架而非套用旧理论；用Markdown结构化呈现；基于事实不编造；资料不足时明确说明。
 
-**核心任务**：为发现的张力创造"原创性概念模型"
-
-**思考路径**：
-1. **过程抽象**：将案例演化抽象为普适性的"阶段"和"核心机制"
-2. **概念命名**：为独特模式赋予简洁、形象、富有理论意涵的新名字
-3. **模型建构**：构建可视化、结构化的理论框架（如矩阵、流程图、整合框架）
-
-**输出目标**：创造一个原创的理论模型和核心构念
-
-## 第三环 (I): 意涵衍生 - 情景推演
-
-**核心任务**：基于新模型进行前瞻性的"多维情景推演"
-
-**思考路径**：
-1. **理论推演**：用新模型审视其他领域，得出颠覆性理论假设
-2. **实践推演**：为不同实践者（CEO、政策制定者、投资者）提供差异化的"行动剧本"
-3. **边界推演**：明确模型的适用条件和失效边界，预见未来挑战
-
-**输出目标**：提供具有前瞻性和可操作性的战略洞察
-
-## 第四环 (C): 语境重构 - 定义贡献
-
-**核心任务**：阐述这个分析如何"重塑认知语境"
-
-**思考路径**：
-1. **贡献定位**：在宏大的知识地图中定位这个洞察的位置
-2. **议程设置**：提出能引领未来思考方向的"新问题"和"新议程"
-3. **价值升华**：回归时代命题，彰显思想格局和社会价值
-
-**输出目标**：重新定义问题的认知框架，开启新探索
-
----
-
-## 回答要求
-
-1. **深度优先**：追求洞察的深刻性，而非表面的全面性
-2. **创造性**：不满足于应用现有理论，要创造新的理论框架
-3. **结构化**：使用Markdown格式（标题、列表、粗体、代码块、表格等）清晰呈现思维层次
-4. **前瞻性**：不仅解释过去，更要塑造对未来的理解
-5. **基于事实**：所有洞察必须源自参考资料，不编造信息
-6. **承认局限**：如果资料不足以支撑深度分析，明确说明
-
-请开始你的E-P-I-C认知分析："""
+请开始E-P-I-C分析："""
 
 
 def search_documents(question: str, top_n: int = 5):
-    """在已上传的文档中做关键词检索（SQLite LIKE 数据库层匹配，快速）
-
-    用 SQL LIKE 在数据库层做关键词匹配，避免加载全部文档全文到内存。
-    """
+    """关键词检索 — 先查标题/标签（快），命中后再加载全文摘要"""
     keywords = [w.strip() for w in question.replace('？', ' ').replace('?', ' ')
                 .replace('，', ' ').replace(',', ' ').replace('。', ' ')
                 .replace('！', ' ').split() if len(w.strip()) >= 2]
@@ -97,59 +49,54 @@ def search_documents(question: str, top_n: int = 5):
     if not keywords:
         return []
 
-    # 在数据库层用 LIKE 匹配，只查出相关文档（不加载 full_text）
-    conditions = []
-    for kw in keywords:
-        like = f'%{kw}%'
-        conditions.append(Document.title.ilike(like))
-        conditions.append(Document.tags.ilike(like))
-        conditions.append(Document.full_text.ilike(like))
-
-    candidates = Document.query.filter(
-        Document.user_id == DEFAULT_USER_ID,
-        Document.status == 'active',
-        db.or_(*conditions)
+    # 先只查标题和标签（不加载 full_text，快速）
+    all_docs = Document.query.filter_by(
+        user_id=DEFAULT_USER_ID, status='active'
+    ).with_entities(
+        Document.id, Document.title, Document.author, Document.tags, Document.full_text
     ).all()
 
-    if not candidates:
+    if not all_docs:
         return []
 
-    # 只对候选文档做评分和摘要提取
+    # 内存中快速打分
     scored = []
-    for doc in candidates:
-        title_and_tags = f"{doc.title} {doc.tags or ''}"
-        score = sum(title_and_tags.lower().count(kw.lower()) for kw in keywords)
+    for row in all_docs:
+        doc_id, title, author, tags, full_text = row
+        searchable = f"{title} {tags or ''}"
+        score = sum(searchable.lower().count(kw.lower()) for kw in keywords)
 
-        text = doc.full_text or ''
+        # 只有标题/标签命中时才检查全文
+        text = full_text or ''
         if text:
             text_lower = text.lower()
             for kw in keywords:
                 score += text_lower.count(kw.lower())
 
-            # 快速找最佳摘要位置（取第一个关键词出现的位置附近）
+        if score == 0:
+            continue
+
+        snippet = ''
+        if text:
             best_pos = 0
             for kw in keywords:
                 pos = text_lower.find(kw.lower())
                 if pos != -1:
                     best_pos = pos
                     break
-
             start = max(0, best_pos - 150)
             snippet = text[start:start + 600]
             if start > 0:
                 snippet = '...' + snippet
             if start + 600 < len(text):
                 snippet = snippet + '...'
-            snippets = [snippet]
-        else:
-            snippets = []
 
         scored.append({
-            'id': doc.id,
-            'title': doc.title,
-            'author': doc.author or '',
+            'id': doc_id,
+            'title': title,
+            'author': author or '',
             'score': score,
-            'snippets': snippets[:3]
+            'snippets': [snippet] if snippet else []
         })
 
     scored.sort(key=lambda x: x['score'], reverse=True)
