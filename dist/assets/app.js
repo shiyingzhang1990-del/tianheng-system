@@ -149,6 +149,7 @@ const App = {
       currentSessionId.value = s.id;
       currentView.value = 'chat';
       sidebarOpen.value = false;
+      framework.value = s.framework || 'epic';
       loadChatMessages(s.id);
     }
 
@@ -159,6 +160,9 @@ const App = {
         const res = await fetch(`${API}/api/qa/${sessionId}`);
         const data = await res.json();
         if (data.question) {
+          if (data.framework) {
+            framework.value = data.framework;
+          }
           messages.value = [
             { role: 'user', content: data.question, time: data.created_time || '' },
             { role: 'assistant', content: data.answer, time: data.created_time || '' }
@@ -240,7 +244,8 @@ const App = {
                     chatSessions.value.unshift({
                       id: data.data.qa_id,
                       title: title,
-                      time: new Date().toLocaleString()
+                      time: new Date().toLocaleString(),
+                      framework: framework.value
                     });
                     // Keep max 50
                     if (chatSessions.value.length > 50) chatSessions.value.pop();
@@ -303,7 +308,8 @@ const App = {
         chatSessions.value = (data.records || []).map(r => ({
           id: r.id,
           title: r.question.length > 30 ? r.question.substring(0, 30) + '...' : r.question,
-          time: r.created_time || ''
+          time: r.created_time || '',
+          framework: r.framework || 'epic'
         }));
       } catch (e) { console.error(e); }
     }

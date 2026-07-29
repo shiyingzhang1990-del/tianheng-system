@@ -129,7 +129,7 @@ def call_deepseek_stream(api_key, api_url, messages):
         'messages': messages,
         'stream': True,
         'temperature': 0.3,
-        'max_tokens': 4000
+        'max_tokens': 8000
     }
 
     try:
@@ -138,7 +138,7 @@ def call_deepseek_stream(api_key, api_url, messages):
             headers=headers,
             json=payload,
             stream=True,
-            timeout=120
+            timeout=180
         )
 
         if resp.status_code != 200:
@@ -228,6 +228,7 @@ def ask_question_stream():
                         user_id=DEFAULT_USER_ID,
                         question=question,
                         answer=answer_text,
+                        framework=framework_id,
                         sources=json.dumps(sources, ensure_ascii=False),
                         response_time=response_time
                     )
@@ -296,7 +297,7 @@ def ask_question():
             'model': 'deepseek-chat',
             'messages': [{'role': 'user', 'content': prompt}],
             'temperature': 0.3,
-            'max_tokens': 4000
+            'max_tokens': 8000
         }
 
         start_time = datetime.now()
@@ -305,7 +306,7 @@ def ask_question():
             f"{api_url}/v1/chat/completions",
             headers=headers,
             json=payload,
-            timeout=120
+            timeout=180
         )
 
         response_time = (datetime.now() - start_time).total_seconds()
@@ -323,6 +324,7 @@ def ask_question():
             user_id=DEFAULT_USER_ID,
             question=question,
             answer=answer,
+            framework=framework_id,
             sources=json.dumps(sources, ensure_ascii=False),
             response_time=response_time
         )
@@ -334,6 +336,7 @@ def ask_question():
             'qa_id': qa_record.id,
             'question': question,
             'answer': answer,
+            'framework': framework_id,
             'sources': sources,
             'response_time': response_time,
             'timestamp': qa_record.created_time.strftime('%Y-%m-%d %H:%M:%S')
@@ -373,6 +376,7 @@ def get_history():
                 'id': record.id,
                 'question': record.question,
                 'answer': record.answer,
+                'framework': getattr(record, 'framework', 'epic') or 'epic',
                 'sources': record.sources,
                 'response_time': record.response_time,
                 'created_time': record.created_time.strftime('%Y-%m-%d %H:%M:%S'),
@@ -405,6 +409,7 @@ def get_qa_record(qa_id):
             'id': record.id,
             'question': record.question,
             'answer': record.answer,
+            'framework': getattr(record, 'framework', 'epic') or 'epic',
             'sources': record.sources,
             'response_time': record.response_time,
             'created_time': record.created_time.strftime('%Y-%m-%d %H:%M:%S'),

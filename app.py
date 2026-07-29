@@ -91,6 +91,13 @@ def create_app(config_class=DevelopmentConfig):
             db.session.commit()
         except Exception:
             db.session.rollback()
+        # 迁移：为 qa_records 添加 framework 列
+        try:
+            from sqlalchemy import text
+            db.session.execute(text("ALTER TABLE qa_records ADD COLUMN framework VARCHAR(50) DEFAULT 'epic'"))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
         ensure_default_user()
     
     return app

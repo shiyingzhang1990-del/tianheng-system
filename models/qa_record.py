@@ -19,6 +19,9 @@ class QARecord(db.Model):
     reasoning = db.Column(db.Text)  # 推理过程
     sources = db.Column(db.Text)  # JSON字符串，存储引用来源
     
+    # 框架信息
+    framework = db.Column(db.String(50), default='epic')  # 使用的认知框架ID
+
     # 性能指标
     response_time = db.Column(db.Float)  # 响应时间（秒）
     
