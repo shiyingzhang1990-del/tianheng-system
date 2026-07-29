@@ -161,6 +161,10 @@
                 <div class="message-name">{{ msg.role === 'user' ? (user?.username || '用户') : '天衡助手' }}</div>
                 <div class="message-text" v-html="renderMarkdown(msg.content)"></div>
                 <div class="message-time">{{ msg.time }}</div>
+                <button v-if="msg.role === 'assistant' && msg.content" class="download-btn" @click="downloadAnswer(msg.content)" title="下载回答">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  下载
+                </button>
               </div>
             </div>
             

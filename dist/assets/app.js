@@ -319,6 +319,16 @@ const App = {
       } catch (e) { console.error(e); }
     }
     
+    function downloadAnswer(content) {
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '天衡回答_' + new Date().toISOString().slice(0, 10) + '.txt';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
     return {
       loading, loggedIn, user, loginForm, loginError, logging,
       sidebarOpen, currentView, question, framework, messages, thinking,
@@ -326,7 +336,7 @@ const App = {
       doLogin, doLogout, newChat, switchChat, sendMessage,
       askSample, scrollToBottom, autoResize,
       loadSessions, deleteHistoryItem,
-      renderMarkdown
+      downloadAnswer, renderMarkdown
     };
   }
 };
