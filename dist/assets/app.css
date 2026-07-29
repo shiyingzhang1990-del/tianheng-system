@@ -45,7 +45,14 @@ html, body { height: 100%; font-family: 'Inter', -apple-system, BlinkMacSystemFo
 .chat-history-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; color: rgba(255,255,255,0.65); transition: all .15s; margin-bottom: 2px; }
 .chat-history-item:hover { background: rgba(255,255,255,0.06); color: #e0e7ff; }
 .chat-history-item.active { background: rgba(79,70,229,0.3); color: #fff; }
+.chat-history-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .chat-history-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-history-time { font-size: 10px; color: rgba(255,255,255,0.3); }
+.chat-history-delete { opacity: 0; background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; padding: 4px; border-radius: 4px; flex-shrink: 0; }
+.chat-history-item:hover .chat-history-delete { opacity: 1; }
+.chat-history-delete:hover { color: #f87171; background: rgba(239,68,68,0.15); }
+.new-chat-btn { margin-top: 8px; padding: 6px 12px; background: rgba(79,70,229,0.3); color: #c7d2fe; border: 1px solid rgba(79,70,229,0.3); border-radius: 8px; cursor: pointer; font-size: 12px; }
+.new-chat-btn:hover { background: rgba(79,70,229,0.5); }
 .empty-history { padding: 20px; text-align: center; color: rgba(255,255,255,0.35); font-size: 13px; }
 .sidebar-nav { padding: 8px; border-top: 1px solid rgba(255,255,255,0.06); margin-top: auto; }
 .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; cursor: pointer; font-size: 14px; color: rgba(255,255,255,0.6); transition: all .15s; }

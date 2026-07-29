@@ -79,31 +79,30 @@
         <!-- Chat History -->
         <div class="sidebar-section-label">对话历史</div>
         <div class="chat-history-list" v-if="chatSessions.length > 0">
-          <div v-for="s in chatSessions" :key="s.id" 
+          <div v-for="s in chatSessions" :key="s.id"
                class="chat-history-item"
                :class="{ active: currentSessionId === s.id }"
                @click="switchChat(s)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-            <span class="chat-history-title">{{ s.title || '新对话' }}</span>
+            <div class="chat-history-info">
+              <span class="chat-history-title">{{ s.title }}</span>
+              <span class="chat-history-time">{{ s.time }}</span>
+            </div>
+            <button class="chat-history-delete" @click.stop="deleteHistoryItem(s.id)" title="删除">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
           </div>
         </div>
         <div class="empty-history" v-else>
           <p>暂无对话历史</p>
+          <button class="new-chat-btn" @click="newChat">开始新对话</button>
         </div>
         
         <!-- Nav Menu -->
         <div class="sidebar-nav">
-          <div class="nav-item" :class="{ active: currentView === 'chat' }" @click="currentView = 'chat'">
+          <div class="nav-item" :class="{ active: currentView === 'chat' }" @click="newChat">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
             <span>AI对话</span>
-          </div>
-          <div class="nav-item" :class="{ active: currentView === 'documents' }" @click="currentView = 'documents'">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-            <span>文档管理</span>
-          </div>
-          <div class="nav-item" :class="{ active: currentView === 'history' }" @click="currentView = 'history'">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            <span>历史记录</span>
           </div>
         </div>
         
@@ -129,9 +128,7 @@
           <button class="menu-btn" @click="sidebarOpen = !sidebarOpen">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
           </button>
-          <h2 class="page-title" v-if="currentView === 'chat'">AI对话</h2>
-          <h2 class="page-title" v-else-if="currentView === 'documents'">文档管理</h2>
-          <h2 class="page-title" v-else>历史记录</h2>
+          <h2 class="page-title">AI对话</h2>
           <div class="top-bar-spacer"></div>
         </div>
         
@@ -150,10 +147,6 @@
               <h2>您好，我是天衡智能助手</h2>
               <p>可以上传 PDF、DOCX、TXT 文档，我来帮您分析内容、回答问题</p>
               <div class="welcome-actions">
-                <div class="action-card" @click="currentView = 'documents'">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  <span>上传文档</span>
-                </div>
                 <div class="action-card" @click="askSample('请介绍一下天衡系统的功能')">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                   <span>尝试提问</span>
@@ -203,66 +196,6 @@
               </select>
               <span class="input-hint">天衡助手基于DeepSeek大模型，回答可能不准确，请核查重要信息</span>
             </div>
-          </div>
-        </div>
-        
-        <!-- Documents View -->
-        <div class="documents-view" v-if="currentView === 'documents'">
-          <div class="documents-header">
-            <div class="upload-zone" :class="{ 'dragover': dragOver }"
-                 @dragover.prevent="dragOver = true" 
-                 @dragleave="dragOver = false"
-                 @drop.prevent="handleDrop">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <p>拖拽文件到此处，或 <strong>点击选择文件</strong></p>
-              <p class="upload-hint">支持 PDF、DOCX、TXT 格式</p>
-              <input type="file" accept=".pdf,.doc,.docx,.txt" multiple @change="uploadFiles" style="display:none" ref="fileInput">
-            </div>
-            <button class="upload-btn" @click="$refs.fileInput.click()" :disabled="uploading">
-              {{ uploading ? '上传中...' : '选择文件' }}
-            </button>
-          </div>
-          
-          <div class="documents-list" v-if="documents.length > 0">
-            <div class="doc-card" v-for="doc in documents" :key="doc.id">
-              <div class="doc-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              </div>
-              <div class="doc-info">
-                <div class="doc-title">{{ doc.title }}</div>
-                <div class="doc-meta">{{ doc.page_count }}页 · {{ formatFileSize(doc.file_size) }} · {{ doc.upload_time }}</div>
-              </div>
-              <div class="doc-tags">
-                <span class="tag" v-for="t in (doc.tags || [])" :key="t">{{ t }}</span>
-              </div>
-              <div class="doc-actions">
-                <span class="doc-status indexed">
-                  已就绪
-                </span>
-                <button class="icon-btn delete" @click="deleteDocument(doc.id)" title="删除文档">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-                </button>
-              </div>
-            </div>
-          </div>
-          <div class="empty-docs" v-else>
-            <p>还没有上传文档，请上传文件开始使用</p>
-          </div>
-        </div>
-        
-        <!-- History View -->
-        <div class="history-view" v-if="currentView === 'history'">
-          <div class="history-list" v-if="qaHistory.length > 0">
-            <div class="history-item" v-for="r in qaHistory" :key="r.id">
-              <div class="history-question">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                <span>{{ r.question }}</span>
-              </div>
-              <div class="history-meta">{{ r.created_time }} · {{ r.response_time }}秒</div>
-            </div>
-          </div>
-          <div class="empty-history" v-else>
-            <p>暂无问答历史记录</p>
           </div>
         </div>
       </div>

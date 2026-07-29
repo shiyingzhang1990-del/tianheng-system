@@ -74,10 +74,6 @@ const App = {
     const thinking = ref(false);
     const chatSessions = ref([]);
     const currentSessionId = ref(null);
-    const documents = ref([]);
-    const qaHistory = ref([]);
-    const uploading = ref(false);
-    const dragOver = ref(false);
     
     // Check auth on load
     onMounted(async () => {
@@ -94,8 +90,7 @@ const App = {
             loggedIn.value = true;
             user.value = data.user;
             setUser(data.user);
-            loadDocuments();
-            loadHistory();
+            loadSessions();
           } else {
             clearAuth();
           }
@@ -124,8 +119,7 @@ const App = {
           setUser(data.user);
           user.value = data.user;
           loggedIn.value = true;
-          loadDocuments();
-          loadHistory();
+          loadSessions();
         } else {
           loginError.value = data.error || '登录失败';
         }
@@ -157,11 +151,19 @@ const App = {
       sidebarOpen.value = false;
       loadChatMessages(s.id);
     }
-    
+
     async function loadChatMessages(sessionId) {
       try {
         messages.value = [];
         currentSessionId.value = sessionId;
+        const res = await fetch(`${API}/api/qa/${sessionId}`);
+        const data = await res.json();
+        if (data.question) {
+          messages.value = [
+            { role: 'user', content: data.question, time: data.created_time || '' },
+            { role: 'assistant', content: data.answer, time: data.created_time || '' }
+          ];
+        }
       } catch (e) { console.error(e); }
     }
     
@@ -231,6 +233,18 @@ const App = {
                   if (messages.value.length > 0 && messages.value[messages.value.length - 1].role === 'assistant') {
                     messages.value[messages.value.length - 1].time = new Date().toLocaleTimeString();
                   }
+                  // Add to chat sessions
+                  if (data.data && data.data.qa_id) {
+                    currentSessionId.value = data.data.qa_id;
+                    const title = q.length > 30 ? q.substring(0, 30) + '...' : q;
+                    chatSessions.value.unshift({
+                      id: data.data.qa_id,
+                      title: title,
+                      time: new Date().toLocaleString()
+                    });
+                    // Keep max 50
+                    if (chatSessions.value.length > 50) chatSessions.value.pop();
+                  }
                 } else if (data.type === 'error') {
                   messages.value.push({
                     role: 'assistant',
@@ -281,100 +295,37 @@ const App = {
       el.style.height = Math.min(el.scrollHeight, 120) + 'px';
     }
     
-    // Documents
-    const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt'];
-
-    async function uploadFiles(e) {
-      const files = Array.from(e.target.files);
-      if (!files.length) return;
-      uploading.value = true;
-
-      let done = 0, ok = 0, fail = 0;
-      const total = files.length;
-
-      await Promise.allSettled(files.map(async (file) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        try {
-          const resp = await fetch(`${API}/api/documents/upload`, { method: 'POST', body: formData });
-          if (resp.ok) ok++; else fail++;
-        } catch (e) { console.error('Upload failed:', e); fail++; }
-        done++;
-        if (total > 1) uploading.value = `上传中 ${done}/${total}...`;
-      }));
-
-      uploading.value = false;
-      e.target.value = '';
-      if (total > 1) alert(`上传完成: 成功 ${ok} 个${fail > 0 ? ', 失败 ' + fail + ' 个' : ''}`);
-      loadDocuments();
-    }
-
-    async function handleDrop(e) {
-      dragOver.value = false;
-      const files = Array.from(e.dataTransfer.files);
-      if (!files.length) return;
-      uploading.value = true;
-
-      let done = 0, ok = 0, fail = 0;
-      const validFiles = files.filter(f => allowedExtensions.some(ext => f.name.toLowerCase().endsWith(ext)));
-      const total = validFiles.length;
-
-      await Promise.allSettled(validFiles.map(async (file) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        try {
-          const resp = await fetch(`${API}/api/documents/upload`, { method: 'POST', body: formData });
-          if (resp.ok) ok++; else fail++;
-        } catch (e) { console.error('Upload failed:', e); fail++; }
-        done++;
-        if (total > 1) uploading.value = `上传中 ${done}/${total}...`;
-      }));
-
-      uploading.value = false;
-      if (total > 1) alert(`上传完成: 成功 ${ok} 个${fail > 0 ? ', 失败 ' + fail + ' 个' : ''}`);
-      loadDocuments();
-    }
-    
-    async function loadDocuments() {
+    // History sessions
+    async function loadSessions() {
       try {
-        const res = await fetch(`${API}/api/documents/list`);
+        const res = await fetch(`${API}/api/qa/history?per_page=50`);
         const data = await res.json();
-        documents.value = data.documents || [];
+        chatSessions.value = (data.records || []).map(r => ({
+          id: r.id,
+          title: r.question.length > 30 ? r.question.substring(0, 30) + '...' : r.question,
+          time: r.created_time || ''
+        }));
       } catch (e) { console.error(e); }
     }
-    
-    async function deleteDocument(id) {
-      if (!confirm('确定删除此文档？')) return;
+
+    async function deleteHistoryItem(id) {
       try {
-        await fetch(`${API}/api/documents/${id}`, { method: 'DELETE' });
-        loadDocuments();
-      } catch (e) { console.error(e); }
-    }
-    
-    function formatFileSize(bytes) {
-      if (!bytes) return '未知';
-      if (bytes < 1024) return bytes + 'B';
-      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + 'KB';
-      return (bytes / (1024 * 1024)).toFixed(1) + 'MB';
-    }
-    
-    // History
-    async function loadHistory() {
-      try {
-        const res = await fetch(`${API}/api/qa/history`);
-        const data = await res.json();
-        qaHistory.value = data.records || [];
+        await fetch(`${API}/api/qa/${id}`, { method: 'DELETE' });
+        chatSessions.value = chatSessions.value.filter(s => s.id !== id);
+        if (currentSessionId.value === id) {
+          currentSessionId.value = null;
+          messages.value = [];
+        }
       } catch (e) { console.error(e); }
     }
     
     return {
       loading, loggedIn, user, loginForm, loginError, logging,
       sidebarOpen, currentView, question, framework, messages, thinking,
-      chatSessions, currentSessionId, documents, qaHistory,
-      uploading, dragOver,
+      chatSessions, currentSessionId,
       doLogin, doLogout, newChat, switchChat, sendMessage,
       askSample, scrollToBottom, autoResize,
-      uploadFiles, handleDrop, deleteDocument, formatFileSize,
+      loadSessions, deleteHistoryItem,
       renderMarkdown
     };
   }
