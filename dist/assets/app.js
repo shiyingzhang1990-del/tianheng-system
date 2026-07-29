@@ -69,6 +69,7 @@ const App = {
     const sidebarOpen = ref(false);
     const currentView = ref('chat');
     const question = ref('');
+    const framework = ref('epic');
     const messages = ref([]);
     const thinking = ref(false);
     const chatSessions = ref([]);
@@ -182,7 +183,7 @@ const App = {
         const res = await fetch(`${API}/api/qa/ask-stream`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ question: q })
+          body: JSON.stringify({ question: q, framework: framework.value })
         });
         
         if (!res.ok) {
@@ -368,7 +369,7 @@ const App = {
     
     return {
       loading, loggedIn, user, loginForm, loginError, logging,
-      sidebarOpen, currentView, question, messages, thinking,
+      sidebarOpen, currentView, question, framework, messages, thinking,
       chatSessions, currentSessionId, documents, qaHistory,
       uploading, dragOver,
       doLogin, doLogout, newChat, switchChat, sendMessage,

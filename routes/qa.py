@@ -1,6 +1,6 @@
 """
 问答API路由
-处理智能问答相关的请求 — 基于文档检索 + EPIC认知框架
+处理智能问答相关的请求 — 基于文档检索 + 多认知框架
 """
 from flask import Blueprint, request, jsonify, current_app, Response, stream_with_context
 from datetime import datetime
@@ -10,34 +10,11 @@ import requests
 from models import db
 from models.qa_record import QARecord
 from models.document import Document
+from services.prompts import get_framework, list_frameworks
 
 qa_bp = Blueprint('qa', __name__)
 
 DEFAULT_USER_ID = 1
-
-# EPIC 认知框架 Prompt
-EPIC_PROMPT_TEMPLATE = """你是顶尖的经济管理思想家，具备深刻洞察力和原创性思维。
-
-{context_section}
-
-# 用户问题
-{question}
-
-# E-P-I-C 认知框架
-
-请按以下四环逻辑深度分析：
-
-**E - 本质洞察**：挖掘问题中的根本性张力（悖论、矛盾、异常信号），将具体问题升维至制度-结构-人性层面。
-
-**P - 模式提炼**：为发现的张力创造原创概念模型，用简洁命名和结构化框架呈现核心机制。
-
-**I - 意涵衍生**：基于新模型进行前瞻性情景推演，为不同角色（决策者、执行者）提供差异化行动剧本。
-
-**C - 语境重构**：定位洞察在知识地图中的位置，提出引领未来思考的新议程，回归时代命题彰显思想价值。
-
-要求：深度优先而非全面；创造新框架而非套用旧理论；用Markdown结构化呈现；基于事实不编造；资料不足时明确说明。
-
-请开始E-P-I-C分析："""
 
 
 def search_documents(question: str, top_n: int = 5):
@@ -119,20 +96,23 @@ def build_context(search_results):
     return '\n'.join(parts)
 
 
-def build_epic_prompt(question: str, context: str | None) -> str:
-    """构建完整的 EPIC Prompt"""
+def build_prompt(question: str, context: str | None, framework_id: str = 'epic') -> str:
+    """构建完整的 Prompt（根据指定的认知框架）"""
+    fw = get_framework(framework_id)
+    template = fw['template']
+
     if context:
         context_section = f"""# 参考资料（来自用户已上传的文档）
 
 {context}
 
-请基于以上参考资料，运用 E-P-I-C 认知框架深度分析和回答问题。"""
+请基于以上参考资料进行分析。"""
     else:
         context_section = """# 注意
-当前知识库中暂无相关文档。请基于你自己的知识储备，运用 E-P-I-C 认知框架深度分析和回答问题。
+当前知识库中暂无相关文档。请基于你自己的知识储备进行分析。
 建议在回答开头说明：此回答基于通用知识，未参考用户上传的文档。"""
 
-    return EPIC_PROMPT_TEMPLATE.format(
+    return template.format(
         context_section=context_section,
         question=question
     )
@@ -190,16 +170,17 @@ def call_deepseek_stream(api_key, api_url, messages):
 
 @qa_bp.route('/ask-stream', methods=['POST'])
 def ask_question_stream():
-    """提问并获取答案（流式输出）— 文档检索 + EPIC 框架"""
+    """提问并获取答案（流式输出）— 文档检索 + 认知框架"""
     try:
         data = request.get_json()
         question = data.get('question', '').strip()
+        framework_id = data.get('framework', 'epic')
 
         if not question:
             return jsonify({'error': '问题不能为空'}), 400
 
-        if len(question) > 1000:
-            return jsonify({'error': '问题长度不能超过1000字符'}), 400
+        if len(question) > 2000:
+            return jsonify({'error': '问题长度不能超过2000字符'}), 400
 
         api_key = current_app.config.get('DEEPSEEK_API_KEY', '')
         api_url = current_app.config.get('DEEPSEEK_API_URL', 'https://api.deepseek.com')
@@ -215,7 +196,7 @@ def ask_question_stream():
         # 搜索相关文档
         search_results = search_documents(question)
         context = build_context(search_results)
-        prompt = build_epic_prompt(question, context)
+        prompt = build_prompt(question, context, framework_id)
 
         print(f"收到问题（流式）: {question}")
         print(f"匹配文档数: {len(search_results)}")
@@ -281,16 +262,17 @@ def ask_question_stream():
 
 @qa_bp.route('/ask', methods=['POST'])
 def ask_question():
-    """提问并获取答案（非流式）— 文档检索 + EPIC 框架"""
+    """提问并获取答案（非流式）— 文档检索 + 认知框架"""
     try:
         data = request.get_json()
         question = data.get('question', '').strip()
+        framework_id = data.get('framework', 'epic')
 
         if not question:
             return jsonify({'error': '问题不能为空'}), 400
 
-        if len(question) > 1000:
-            return jsonify({'error': '问题长度不能超过1000字符'}), 400
+        if len(question) > 2000:
+            return jsonify({'error': '问题长度不能超过2000字符'}), 400
 
         api_key = current_app.config.get('DEEPSEEK_API_KEY', '')
         api_url = current_app.config.get('DEEPSEEK_API_URL', 'https://api.deepseek.com')
@@ -301,9 +283,9 @@ def ask_question():
         # 搜索相关文档
         search_results = search_documents(question)
         context = build_context(search_results)
-        prompt = build_epic_prompt(question, context)
+        prompt = build_prompt(question, context, framework_id)
 
-        print(f"收到问题: {question}")
+        print(f"收到问题: {question} (框架: {framework_id})")
         print(f"匹配文档数: {len(search_results)}")
 
         headers = {
@@ -361,6 +343,16 @@ def ask_question():
         print(f"处理问题时出错: {e}")
         import traceback
         traceback.print_exc()
+        return jsonify({'error': f'服务器错误: {str(e)}'}), 500
+
+
+@qa_bp.route('/frameworks', methods=['GET'])
+def get_frameworks():
+    """获取可用的认知框架列表"""
+    try:
+        frameworks = list_frameworks()
+        return jsonify({'frameworks': frameworks, 'default': 'epic'})
+    except Exception as e:
         return jsonify({'error': f'服务器错误: {str(e)}'}), 500
 
 
