@@ -74,6 +74,19 @@ const App = {
     const thinking = ref(false);
     const chatSessions = ref([]);
     const currentSessionId = ref(null);
+
+    const frameworks = [
+      { id: 'epic', name: 'EPIC 认知框架', desc: '本质洞察 → 模式提炼 → 意涵衍生 → 语境重构', color: '#4F46E5' },
+      { id: 'management_world', name: '管理世界风格', desc: '10阶段学术推理 · 发现理论张力与机制', color: '#059669' },
+      { id: 'economic_research', name: '经济研究风格', desc: '14阶段经济学分析 · 因果识别与福利评价', color: '#D97706' },
+      { id: 'accounting_research', name: '会计研究风格', desc: '17阶段会计学研究 · 准则与监管启示', color: '#7C3AED' },
+      { id: 'cie_research', name: '中国工业经济风格', desc: '19阶段产业分析 · 微观—中观—宏观传导', color: '#DC2626' },
+      { id: 'nmr_research', name: '南开管理评论风格', desc: '17阶段管理学研究 · 行动与互动机制', color: '#0891B2' },
+    ];
+
+    function selectFramework(fwId) {
+      framework.value = fwId;
+    }
     
     // Check auth on load
     onMounted(async () => {
@@ -338,7 +351,7 @@ const App = {
     return {
       loading, loggedIn, user, loginForm, loginError, logging,
       sidebarOpen, currentView, question, framework, messages, thinking,
-      chatSessions, currentSessionId,
+      chatSessions, currentSessionId, frameworks, selectFramework,
       doLogin, doLogout, newChat, switchChat, sendMessage,
       askSample, scrollToBottom, autoResize,
       loadSessions, deleteHistoryItem,

@@ -134,6 +134,21 @@
         
         <!-- Chat View -->
         <div class="chat-view" v-if="currentView === 'chat'">
+          <!-- Framework Selector Bar -->
+          <div class="framework-bar">
+            <div class="framework-bar-title">选择分析框架</div>
+            <div class="framework-cards">
+              <div v-for="fw in frameworks" :key="fw.id"
+                   class="framework-card"
+                   :class="{ active: framework === fw.id }"
+                   :style="framework === fw.id ? { borderColor: fw.color, background: fw.color + '08' } : {}"
+                   @click="selectFramework(fw.id)">
+                <div class="fw-card-name" :style="framework === fw.id ? { color: fw.color } : {}">{{ fw.name }}</div>
+                <div class="fw-card-desc">{{ fw.desc }}</div>
+              </div>
+            </div>
+          </div>
+
           <div class="messages-container" ref="messagesContainer">
             <!-- Welcome screen -->
             <div class="welcome-screen" v-if="messages.length === 0">
@@ -194,14 +209,6 @@
               </button>
             </div>
             <div class="input-options">
-              <select v-model="framework" class="framework-select">
-                <option value="epic">EPIC 认知框架</option>
-                <option value="management_world">管理世界风格</option>
-                <option value="economic_research">经济研究风格</option>
-                <option value="accounting_research">会计研究风格</option>
-                <option value="cie_research">中国工业经济风格</option>
-                <option value="nmr_research">南开管理评论风格</option>
-              </select>
               <span class="input-hint">天衡助手基于DeepSeek大模型，回答可能不准确，请核查重要信息</span>
             </div>
           </div>
